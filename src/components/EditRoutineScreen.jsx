@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getRoutines, defaultRoutines } from '../data/routines'
 import { saveCustomRoutines, resetCustomRoutines, getTimerSettings, saveTimerSettings, resetTimerSettings, getVoiceName, saveVoiceName } from '../utils/storage'
 import { getAvailableVoices, speakExerciseName } from '../utils/audio'
+import useDragReorder from '../hooks/useDragReorder'
 
 function emptyExercise() {
   return { name: '', duration: 60, reps: null, perSide: false, _type: 'duration' }
@@ -153,6 +154,17 @@ export default function EditRoutineScreen({ onBack }) {
 
   const exercises = routines[activeDay]
 
+  function handleReorder(newList) {
+    const updated = { ...routines }
+    updated[activeDay] = newList
+    persist(updated)
+  }
+
+  const { dragIndex, overIndex, getDragHandleProps, getContainerProps } = useDragReorder(
+    exercises,
+    handleReorder
+  )
+
   function handleTimerChange(key, value) {
     const num = Math.max(0, Math.min(30, Number(value)))
     const updated = { ...timerSettings, [key]: num }
@@ -183,18 +195,6 @@ export default function EditRoutineScreen({ onBack }) {
     const updated = { ...routines }
     const list = [...updated[activeDay]]
     list.splice(index, 1)
-    updated[activeDay] = list
-    persist(updated)
-  }
-
-  function handleMove(index, direction) {
-    const newIndex = index + direction
-    if (newIndex < 0 || newIndex >= exercises.length) return
-    const updated = { ...routines }
-    const list = [...updated[activeDay]]
-    const temp = list[index]
-    list[index] = list[newIndex]
-    list[newIndex] = temp
     updated[activeDay] = list
     persist(updated)
   }
@@ -308,9 +308,13 @@ export default function EditRoutineScreen({ onBack }) {
       </div>
 
       {/* Exercise list */}
-      <div className="flex-1 px-6 pb-6 overflow-y-auto">
-        {exercises.map((ex, i) => (
-          <div key={i}>
+      <div className="flex-1 px-6 pb-6 overflow-y-auto" {...getContainerProps()}>
+        {exercises.map((ex, i) => {
+          const isDragging = dragIndex === i
+          const isOver = overIndex === i && dragIndex !== null && dragIndex !== i
+
+          return (
+          <div key={i} data-drag-item>
             {editingIndex === i ? (
               <div className="mb-4">
                 <ExerciseForm
@@ -320,27 +324,22 @@ export default function EditRoutineScreen({ onBack }) {
                 />
               </div>
             ) : (
-              <div className="bg-[#eeeeec] rounded-2xl p-4 mb-3 flex items-center gap-3">
-                {/* Reorder */}
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={() => handleMove(i, -1)}
-                    disabled={i === 0}
-                    className="text-[#474747] disabled:opacity-20 active:opacity-60"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="18 15 12 9 6 15" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleMove(i, 1)}
-                    disabled={i === exercises.length - 1}
-                    className="text-[#474747] disabled:opacity-20 active:opacity-60"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </button>
+              <div className={`rounded-2xl p-4 mb-3 flex items-center gap-3 transition-all ${
+                isDragging ? 'bg-[#dadad8] opacity-60 scale-[0.97]' : 'bg-[#eeeeec]'
+              } ${isOver ? 'border-t-2 border-[#1a1c1b]' : 'border-t-2 border-transparent'}`}>
+                {/* Drag handle */}
+                <div
+                  {...getDragHandleProps(i)}
+                  className="touch-none cursor-grab active:cursor-grabbing p-1 text-[#9ca3af]"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="9" cy="6" r="1.5" />
+                    <circle cx="15" cy="6" r="1.5" />
+                    <circle cx="9" cy="12" r="1.5" />
+                    <circle cx="15" cy="12" r="1.5" />
+                    <circle cx="9" cy="18" r="1.5" />
+                    <circle cx="15" cy="18" r="1.5" />
+                  </svg>
                 </div>
 
                 {/* Info */}
@@ -374,7 +373,8 @@ export default function EditRoutineScreen({ onBack }) {
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
 
         {/* Add exercise form or button */}
         {isAdding ? (
