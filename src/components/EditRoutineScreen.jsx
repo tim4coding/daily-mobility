@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getRoutines, defaultRoutines } from '../data/routines'
-import { saveCustomRoutines, resetCustomRoutines, getTimerSettings, saveTimerSettings, resetTimerSettings, getVoiceName, saveVoiceName } from '../utils/storage'
-import { getAvailableVoices, speakExerciseName } from '../utils/audio'
+import { saveCustomRoutines, resetCustomRoutines, getTimerSettings, saveTimerSettings, resetTimerSettings, getVoiceName, saveVoiceName, getElevenLabsConfig, saveElevenLabsConfig } from '../utils/storage'
+import { getAvailableVoices, speakExerciseName, testElevenLabs } from '../utils/audio'
 import useDragReorder from '../hooks/useDragReorder'
 
 function emptyExercise() {
@@ -139,6 +139,9 @@ export default function EditRoutineScreen({ onBack }) {
   const [isAdding, setIsAdding] = useState(false)
   const [timerSettings, setTimerSettings] = useState(() => getTimerSettings())
   const [selectedVoice, setSelectedVoice] = useState(() => getVoiceName())
+  const [elConfig, setElConfig] = useState(() => getElevenLabsConfig())
+  const [elTesting, setElTesting] = useState(false)
+  const [elTestResult, setElTestResult] = useState(null)
   const [voices, setVoices] = useState([])
 
   useEffect(() => {
@@ -302,9 +305,66 @@ export default function EditRoutineScreen({ onBack }) {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-[#474747] mt-2">Announces next exercise at 10s</p>
+            <p className="text-xs text-[#474747] mt-2">Fallback voice when offline or ElevenLabs limit reached</p>
           </div>
         )}
+
+        {/* ElevenLabs settings */}
+        <div className="bg-[#eeeeec] rounded-2xl p-4 mb-6">
+          <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#474747] mb-3">
+            ElevenLabs
+          </p>
+          <div className="mb-3">
+            <label className="text-xs text-[#474747] mb-1 block">API Key</label>
+            <input
+              type="password"
+              value={elConfig.apiKey}
+              onChange={(e) => {
+                const updated = { ...elConfig, apiKey: e.target.value }
+                setElConfig(updated)
+                saveElevenLabsConfig(updated.apiKey, updated.voiceId)
+                setElTestResult(null)
+              }}
+              placeholder="Enter your API key"
+              className="w-full bg-white rounded-xl px-3 py-3 text-[#1a1c1b] text-sm outline-none"
+            />
+          </div>
+          <div className="mb-3">
+            <label className="text-xs text-[#474747] mb-1 block">Voice ID</label>
+            <input
+              type="text"
+              value={elConfig.voiceId}
+              onChange={(e) => {
+                const updated = { ...elConfig, voiceId: e.target.value }
+                setElConfig(updated)
+                saveElevenLabsConfig(updated.apiKey, updated.voiceId)
+                setElTestResult(null)
+              }}
+              placeholder="e.g. GPqz2HQgMwwuJRsXfTzz"
+              className="w-full bg-white rounded-xl px-3 py-3 text-[#1a1c1b] text-sm outline-none"
+            />
+          </div>
+          <button
+            onClick={async () => {
+              setElTesting(true)
+              setElTestResult(null)
+              const ok = await testElevenLabs(elConfig.apiKey, elConfig.voiceId)
+              setElTestResult(ok)
+              setElTesting(false)
+            }}
+            disabled={!elConfig.apiKey || !elConfig.voiceId || elTesting}
+            className="w-full py-3 rounded-xl bg-[#1a1c1b] text-white text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform mb-2"
+          >
+            {elTesting ? 'Testing...' : 'Test Voice'}
+          </button>
+          {elTestResult === true && (
+            <p className="text-xs text-green-600 text-center">Working — you should hear the voice</p>
+          )}
+          {elTestResult === false && (
+            <p className="text-xs text-red-600 text-center">Failed — check your API key and voice ID</p>
+          )}
+          <p className="text-xs text-[#474747] mt-2">Uses free tier, falls back to browser voice at limit</p>
+        </div>
       </div>
 
       {/* Exercise list */}
