@@ -4,18 +4,38 @@ let audioUnlocked = false
 let elevenLabsFailed = false
 const audioCache = new Map()
 
+// Single reusable Audio element — iOS requires this to be "unlocked" by a user tap
+let sharedAudio = null
+
+function getSharedAudio() {
+  if (!sharedAudio) {
+    sharedAudio = new Audio()
+  }
+  return sharedAudio
+}
+
 // Must be called from a direct user tap (e.g. "Start Routine" button)
 export function unlockAudio() {
   if (audioUnlocked) return
 
   try {
+    // Unlock the shared Audio element with a silent play
+    const audio = getSharedAudio()
+    audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+    audio.volume = 0
+    audio.play().then(() => {
+      audio.pause()
+      audio.volume = 1
+    }).catch(() => {})
+
+    // Unlock Speech Synthesis
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance('')
       utterance.volume = 0
       window.speechSynthesis.speak(utterance)
     }
+
     audioUnlocked = true
-    // Reset ElevenLabs failure flag on new session start
     elevenLabsFailed = false
   } catch {
     // Fail silently
@@ -25,8 +45,13 @@ export function unlockAudio() {
 async function speakElevenLabs(text, apiKey, voiceId) {
   // Check cache first
   if (audioCache.has(text)) {
-    const audio = new Audio(audioCache.get(text))
-    audio.play()
+    const audio = getSharedAudio()
+    audio.src = audioCache.get(text)
+    try {
+      await audio.play()
+    } catch {
+      return false
+    }
     return true
   }
 
@@ -48,7 +73,6 @@ async function speakElevenLabs(text, apiKey, voiceId) {
     })
 
     if (!res.ok) {
-      // 401 = bad key, 429 = rate limit — fall back for rest of session
       elevenLabsFailed = true
       return false
     }
@@ -57,8 +81,13 @@ async function speakElevenLabs(text, apiKey, voiceId) {
     const url = URL.createObjectURL(blob)
     audioCache.set(text, url)
 
-    const audio = new Audio(url)
-    audio.play()
+    const audio = getSharedAudio()
+    audio.src = url
+    try {
+      await audio.play()
+    } catch {
+      return false
+    }
     return true
   } catch {
     elevenLabsFailed = true
@@ -133,7 +162,8 @@ export async function testElevenLabs(apiKey, voiceId) {
 
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
-    const audio = new Audio(url)
+    const audio = getSharedAudio()
+    audio.src = url
     audio.play()
     return true
   } catch {
