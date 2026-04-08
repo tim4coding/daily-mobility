@@ -171,6 +171,60 @@ export async function testElevenLabs(apiKey, voiceId) {
   }
 }
 
+// Pre-fetch all voice clips for a workout so playback is instant
+export async function precacheWorkoutAudio(steps) {
+  const { apiKey, voiceId } = getElevenLabsConfig()
+  if (!apiKey || !voiceId || elevenLabsFailed) return
+
+  // Collect all unique phrases that will be spoken during the workout
+  const phrases = new Set(['Begin', '1', '2', '3'])
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i]
+    const nextStep = steps[i + 1]
+    if (nextStep) {
+      const label = nextStep.side
+        ? `${nextStep.name}, ${nextStep.side} side`
+        : nextStep.name
+      phrases.add(`Next up: ${label}`)
+    }
+  }
+  // Last exercise message
+  phrases.add('Last exercise, almost done')
+
+  // Fetch all uncached phrases in parallel
+  const uncached = [...phrases].filter((p) => !audioCache.has(p))
+  if (uncached.length === 0) return
+
+  await Promise.allSettled(
+    uncached.map(async (text) => {
+      try {
+        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+          method: 'POST',
+          headers: {
+            'xi-api-key': apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text,
+            model_id: 'eleven_monolingual_v1',
+            voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+          }),
+        })
+        if (res.ok) {
+          const blob = await res.blob()
+          const url = URL.createObjectURL(blob)
+          audioCache.set(text, url)
+        } else {
+          elevenLabsFailed = true
+        }
+      } catch {
+        elevenLabsFailed = true
+      }
+    })
+  )
+}
+
 export function getAvailableVoices() {
   if (!('speechSynthesis' in window)) return []
   return window.speechSynthesis.getVoices().filter((v) => v.lang.startsWith('en'))

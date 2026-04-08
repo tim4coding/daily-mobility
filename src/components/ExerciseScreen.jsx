@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { getRoutines } from '../data/routines'
 import { saveInProgress, getTimerSettings, getVoiceName } from '../utils/storage'
 import useTimer from '../hooks/useTimer'
-import { playCountdownBeep, speakExerciseName, speakBegin } from '../utils/audio'
+import { playCountdownBeep, speakExerciseName, speakBegin, precacheWorkoutAudio } from '../utils/audio'
 import useWakeLock from '../hooks/useWakeLock'
 
 function formatTime(seconds) {
@@ -35,6 +35,11 @@ export default function ExerciseScreen({ day, onComplete, onQuit, initialStep })
 
   // Keep screen awake during workout
   useWakeLock(true)
+
+  // Pre-fetch all ElevenLabs audio during prep countdown
+  useEffect(() => {
+    precacheWorkoutAudio(steps)
+  }, [steps])
 
   const current = steps[stepIndex]
   const isTimedExercise = !!current.duration
