@@ -8,8 +8,6 @@ const KEYS = {
   WORKOUT_HISTORY: 'mobility_workoutHistory',
   LONGEST_STREAK: 'mobility_longestStreak',
   VOICE_NAME: 'mobility_voiceName',
-  ELEVENLABS_API_KEY: 'mobility_elevenLabsApiKey',
-  ELEVENLABS_VOICE_ID: 'mobility_elevenLabsVoiceId',
 }
 
 const DEFAULT_TIMER_SETTINGS = { prepTime: 10, restTime: 5 }
@@ -213,15 +211,10 @@ export function saveVoiceName(name) {
   localStorage.setItem(KEYS.VOICE_NAME, name)
 }
 
-// ElevenLabs config
-export function getElevenLabsConfig() {
-  return {
-    apiKey: localStorage.getItem(KEYS.ELEVENLABS_API_KEY) || '',
-    voiceId: localStorage.getItem(KEYS.ELEVENLABS_VOICE_ID) || '',
-  }
-}
-
-export function saveElevenLabsConfig(apiKey, voiceId) {
-  localStorage.setItem(KEYS.ELEVENLABS_API_KEY, apiKey)
-  localStorage.setItem(KEYS.ELEVENLABS_VOICE_ID, voiceId)
+// Clean up legacy ElevenLabs keys on app load
+try {
+  localStorage.removeItem('mobility_elevenLabsApiKey')
+  localStorage.removeItem('mobility_elevenLabsVoiceId')
+} catch {
+  // Fail silently
 }
