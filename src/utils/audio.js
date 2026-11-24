@@ -1,8 +1,24 @@
 let audioUnlocked = false
 
+// Tell iOS our audio is short cues, so background music (Spotify, Apple Music)
+// ducks under the voice instead of being paused. Safari 16.4+ only.
+// If iOS still pauses music, try 'ambient' (mixes without ducking).
+function configureAudioSession() {
+  try {
+    if (navigator.audioSession && navigator.audioSession.type !== 'transient') {
+      navigator.audioSession.type = 'transient'
+    }
+  } catch {
+    // Not supported — ignore
+  }
+}
+
+configureAudioSession()
+
 // Must be called from a direct user tap (e.g. "Start Routine" button)
 // This unlocks Speech Synthesis on iOS
 export function unlockAudio() {
+  configureAudioSession()
   if (audioUnlocked) return
 
   try {
@@ -20,6 +36,7 @@ export function unlockAudio() {
 function speak(text, voiceName, rate = 1) {
   try {
     if (!('speechSynthesis' in window)) return
+    configureAudioSession()
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = rate
