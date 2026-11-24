@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getNextDay, getStreak, getInProgress } from '../utils/storage'
+import { getNextDay, getStreak, getInProgress, getProtocolMeta } from '../utils/storage'
 import { getRoutines } from '../data/routines'
 
 export default function HomeScreen({ onStart, onEdit, onStats }) {
@@ -8,7 +8,10 @@ export default function HomeScreen({ onStart, onEdit, onStats }) {
   const streak = getStreak()
   const inProgress = getInProgress()
   const routines = getRoutines()
-  const exercises = routines[selectedDay]
+  const exercises = routines[selectedDay] || []
+  const isEmpty = exercises.length === 0
+  const protocolMeta = getProtocolMeta()
+  const meta = protocolMeta[selectedDay]
 
   const totalSeconds = exercises.reduce((sum, ex) => {
     const base = ex.duration || 0
@@ -40,9 +43,9 @@ export default function HomeScreen({ onStart, onEdit, onStats }) {
           Today
         </h1>
 
-        {/* Day A/B switcher */}
+        {/* Day A/B/C switcher */}
         <div className="flex gap-2 mb-4">
-          {['A', 'B'].map((day) => (
+          {['A', 'B', 'C'].map((day) => (
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
@@ -68,12 +71,10 @@ export default function HomeScreen({ onStart, onEdit, onStats }) {
             Current Protocol
           </p>
           <h2 className="text-2xl font-bold leading-snug mb-3">
-            {selectedDay === 'A' ? 'Hip & Core Flow' : 'Ankle & Adductor Flow'}
+            {meta.title}
           </h2>
-          <p className="text-[#474747] text-sm leading-relaxed mb-6">
-            {selectedDay === 'A'
-              ? 'Ankle mobility, hip flexor activation, and core stability work with a deep squat hold.'
-              : 'Ankle rocks, lateral hip mobility, adductor work, and glute activation.'}
+          <p className="text-[#474747] text-sm leading-relaxed mb-6 whitespace-pre-wrap">
+            {meta.description}
           </p>
           <div className="flex gap-8 border-t border-[#dadad8] pt-4">
             <div>
@@ -90,9 +91,10 @@ export default function HomeScreen({ onStart, onEdit, onStats }) {
         <div className="mt-auto flex flex-col gap-3">
           <button
             onClick={() => onStart(selectedDay)}
-            className="w-full py-4 rounded-xl bg-[#1a1c1b] text-[#e5e2e1] text-base font-semibold active:scale-[0.98] transition-transform"
+            disabled={isEmpty}
+            className="w-full py-4 rounded-xl bg-[#1a1c1b] text-[#e5e2e1] text-base font-semibold active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
           >
-            {inProgress ? 'Resume Routine' : 'Start Routine'} &rarr;
+            {isEmpty ? 'No Exercises Yet' : (inProgress ? 'Resume Routine' : 'Start Routine')} {!isEmpty && '\u2192'}
           </button>
           <button
             onClick={onEdit}

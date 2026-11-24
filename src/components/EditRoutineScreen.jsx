@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getRoutines, defaultRoutines } from '../data/routines'
-import { saveCustomRoutines, resetCustomRoutines, getTimerSettings, saveTimerSettings, resetTimerSettings, getVoiceName, saveVoiceName } from '../utils/storage'
+import { saveCustomRoutines, resetCustomRoutines, getTimerSettings, saveTimerSettings, resetTimerSettings, getVoiceName, saveVoiceName, getProtocolMeta, saveProtocolMeta, resetProtocolMeta } from '../utils/storage'
 import { getAvailableVoices, speakExerciseName } from '../utils/audio'
 import useDragReorder from '../hooks/useDragReorder'
 
@@ -139,6 +139,19 @@ export default function EditRoutineScreen({ onBack }) {
   const [isAdding, setIsAdding] = useState(false)
   const [timerSettings, setTimerSettings] = useState(() => getTimerSettings())
   const [selectedVoice, setSelectedVoice] = useState(() => getVoiceName())
+  const [protocolMeta, setProtocolMeta] = useState(() => getProtocolMeta())
+
+  function handleProtocolMetaChange(field, value) {
+    const updated = {
+      ...protocolMeta,
+      [activeDay]: {
+        ...protocolMeta[activeDay],
+        [field]: value,
+      },
+    }
+    setProtocolMeta(updated)
+    saveProtocolMeta(updated)
+  }
   const [voices, setVoices] = useState([])
 
   useEffect(() => {
@@ -202,8 +215,10 @@ export default function EditRoutineScreen({ onBack }) {
   function handleReset() {
     resetCustomRoutines()
     resetTimerSettings()
+    resetProtocolMeta()
     setRoutines(defaultRoutines)
     setTimerSettings(getTimerSettings())
+    setProtocolMeta(getProtocolMeta())
     setEditingIndex(null)
     setIsAdding(false)
   }
@@ -231,7 +246,7 @@ export default function EditRoutineScreen({ onBack }) {
 
         {/* Day tabs */}
         <div className="flex gap-2 mb-6">
-          {['A', 'B'].map((day) => (
+          {['A', 'B', 'C'].map((day) => (
             <button
               key={day}
               onClick={() => { setActiveDay(day); setEditingIndex(null); setIsAdding(false) }}
@@ -243,6 +258,34 @@ export default function EditRoutineScreen({ onBack }) {
             </button>
           ))}
         </div>
+
+        {/* Protocol info (title + description per day) */}
+        <div className="bg-[#eeeeec] rounded-2xl p-4 mb-6">
+          <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#474747] mb-3">
+            Day {activeDay} Info
+          </p>
+          <div className="mb-3">
+            <label className="text-xs text-[#474747] mb-1 block">Title</label>
+            <input
+              type="text"
+              value={protocolMeta[activeDay].title}
+              onChange={(e) => handleProtocolMetaChange('title', e.target.value)}
+              placeholder="e.g. Hip & Core Flow"
+              className="w-full bg-white rounded-xl px-3 py-3 text-[#1a1c1b] text-sm font-semibold outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-[#474747] mb-1 block">Description</label>
+            <textarea
+              value={protocolMeta[activeDay].description}
+              onChange={(e) => handleProtocolMetaChange('description', e.target.value)}
+              placeholder="What this routine focuses on..."
+              rows={3}
+              className="w-full bg-white rounded-xl px-3 py-3 text-[#1a1c1b] text-sm outline-none resize-none"
+            />
+          </div>
+        </div>
+
         {/* Timer settings */}
         <div className="bg-[#eeeeec] rounded-2xl p-4 mb-6">
           <p className="text-xs font-medium tracking-[0.2em] uppercase text-[#474747] mb-3">

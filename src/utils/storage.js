@@ -8,9 +8,25 @@ const KEYS = {
   WORKOUT_HISTORY: 'mobility_workoutHistory',
   LONGEST_STREAK: 'mobility_longestStreak',
   VOICE_NAME: 'mobility_voiceName',
+  PROTOCOL_META: 'mobility_protocolMeta',
 }
 
 const DEFAULT_TIMER_SETTINGS = { prepTime: 10, restTime: 5 }
+
+export const DEFAULT_PROTOCOL_META = {
+  A: {
+    title: 'Hip & Core Flow',
+    description: 'Ankle mobility, hip flexor activation, and core stability work with a deep squat hold.',
+  },
+  B: {
+    title: 'Ankle & Adductor Flow',
+    description: 'Ankle rocks, lateral hip mobility, adductor work, and glute activation.',
+  },
+  C: {
+    title: 'Custom Routine',
+    description: 'Build your own routine in Edit Routines.',
+  },
+}
 
 // Local timezone date string (YYYY-MM-DD)
 export function getLocalDateStr(date = new Date()) {
@@ -32,7 +48,10 @@ export function getLastCompletedDay() {
 
 export function getNextDay() {
   const last = getLastCompletedDay()
-  return last === 'A' ? 'B' : 'A'
+  if (last === 'A') return 'B'
+  if (last === 'B') return 'C'
+  if (last === 'C') return 'A'
+  return 'A'
 }
 
 export function getStreak() {
@@ -209,6 +228,26 @@ export function getVoiceName() {
 
 export function saveVoiceName(name) {
   localStorage.setItem(KEYS.VOICE_NAME, name)
+}
+
+// Protocol meta (per-day titles and descriptions)
+export function getProtocolMeta() {
+  const data = localStorage.getItem(KEYS.PROTOCOL_META)
+  const stored = data ? JSON.parse(data) : {}
+  // Merge with defaults so any missing days fall back gracefully
+  return {
+    A: { ...DEFAULT_PROTOCOL_META.A, ...(stored.A || {}) },
+    B: { ...DEFAULT_PROTOCOL_META.B, ...(stored.B || {}) },
+    C: { ...DEFAULT_PROTOCOL_META.C, ...(stored.C || {}) },
+  }
+}
+
+export function saveProtocolMeta(meta) {
+  localStorage.setItem(KEYS.PROTOCOL_META, JSON.stringify(meta))
+}
+
+export function resetProtocolMeta() {
+  localStorage.removeItem(KEYS.PROTOCOL_META)
 }
 
 // Clean up legacy ElevenLabs keys on app load

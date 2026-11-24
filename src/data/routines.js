@@ -15,8 +15,13 @@ export const defaultRoutines = {
     { name: 'Glute Bridges', reps: 10, perSide: false },
     { name: '90/90 Forward Lean', duration: 60, perSide: true },
   ],
+  C: [],
 }
 
 export function getRoutines() {
-  return getCustomRoutines() || defaultRoutines
+  const custom = getCustomRoutines()
+  if (!custom) return defaultRoutines
+  // Merge with defaults so any new days (e.g. C) are available even if
+  // the user has older saved routines that pre-date them
+  return { ...defaultRoutines, ...custom }
 }
